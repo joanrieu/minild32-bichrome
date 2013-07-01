@@ -6,6 +6,8 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 
+static sf::Font font;
+
 enum Color {
         BLUE,
         RED,
@@ -18,9 +20,9 @@ const sf::Color colors[] = {
 
 sf::RectangleShape getRect(sf::Color color, float blockSize = 40) {
         sf::RectangleShape rect(sf::Vector2f(blockSize, blockSize));
-        rect.SetFillColor(sf::Color::Transparent);
-        rect.SetOutlineColor(color);
-        rect.SetOutlineThickness(1);
+        rect.setFillColor(sf::Color::Transparent);
+        rect.setOutlineColor(color);
+        rect.setOutlineThickness(1);
         return rect;
 }
 
@@ -30,14 +32,14 @@ std::function<float()> urand;
 int screenBordersHit(sf::FloatRect rect) {
 
         sf::FloatRect inter;
-        sf::FloatRect(0, 0, win->GetWidth(), win->GetHeight()).Intersects(rect, inter);
+        sf::FloatRect(0, 0, win->getSize().x, win->getSize().y).intersects(rect, inter);
 
         int result = 0;
 
-        if (rect.Width - inter.Width > .5f)
+        if (rect.width - inter.width > .5f)
                 result |= 1;
 
-        if (rect.Height - inter.Height > .5f)
+        if (rect.height - inter.height > .5f)
                 result |= 2;
 
         return result;
@@ -73,17 +75,17 @@ struct Shmup: Game {
 Shmup::Shmup() {
 
         base = getRect(colors[BLUE], 120);
-        base.SetOrigin(base.GetSize() / 2.f);
-        base.SetPosition(sf::Vector2f(win->GetWidth(), win->GetHeight()) / 2.f);
+        base.setOrigin(base.getSize() / 2.f);
+        base.setPosition(sf::Vector2f(win->getSize().x, win->getSize().y) / 2.f);
 
         player = getRect(colors[BLUE], 60);
-        player.SetFillColor(player.GetOutlineColor());
-        player.SetOrigin(player.GetSize() / 2.f);
-        player.SetPosition(base.GetPosition());
+        player.setFillColor(player.getOutlineColor());
+        player.setOrigin(player.getSize() / 2.f);
+        player.setPosition(base.getPosition());
 
         shotRect = getRect(colors[BLUE]);
-        shotRect.SetPosition(player.GetPosition());
-        shotRect.SetSize(sf::Vector2f(20.f, 1));
+        shotRect.setPosition(player.getPosition());
+        shotRect.setSize(sf::Vector2f(20.f, 1));
 
         recoil = 0;
         spawner = 0;
@@ -98,18 +100,18 @@ void Shmup::update() {
         if (pause)
                 return;
 
-        const float rot = player.GetRotation() + .6f;
-        player.SetRotation(rot);
+        const float rot = player.getRotation() + .6f;
+        player.setRotation(rot);
 
         if (not recoil--) {
 
-                if (sf::Keyboard::IsKeyPressed(sf::Keyboard::Up))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
                         shots.push_back(std::make_pair(rot - 90.f, 0.f));
-                if (sf::Keyboard::IsKeyPressed(sf::Keyboard::Down))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
                         shots.push_back(std::make_pair(rot + 90.f, 0.f));
-                if (sf::Keyboard::IsKeyPressed(sf::Keyboard::Left))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
                         shots.push_back(std::make_pair(rot + 180.f, 0.f));
-                if (sf::Keyboard::IsKeyPressed(sf::Keyboard::Right))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
                         shots.push_back(std::make_pair(rot, 0.f));
 
                 recoil = 10;
@@ -124,26 +126,26 @@ void Shmup::update() {
         for (auto& shot: shots)
                 shot = std::make_pair(shot.first, shot.second + 5.f);
 
-        const sf::FloatRect sb(0, 0, win->GetWidth(), win->GetHeight());
+        const sf::FloatRect sb(0, 0, win->getSize().x, win->getSize().y);
 
         for (auto& other: others) {
-                std::get<1>(other).Left += std::get<2>(other).x;
-                std::get<1>(other).Top += std::get<2>(other).y;
+                std::get<1>(other).left += std::get<2>(other).x;
+                std::get<1>(other).top += std::get<2>(other).y;
         }
 
         others.erase(std::remove_if(others.begin(), others.end(), [&](const Other& other) {
                 sf::FloatRect inter;
-                return not sb.Intersects(std::get<1>(other), inter) or inter == sf::FloatRect();
+                return not sb.intersects(std::get<1>(other), inter) or inter == sf::FloatRect();
         }), others.end());
 
         shots.erase(std::remove_if(shots.begin(), shots.end(), [&](const Shot& shot) {
 
                 sf::Vector2f hit(cos(shot.first * M_PI / 180.f), sin(shot.first * M_PI / 180.f));
                 hit *= shot.second;
-                hit += player.GetPosition();
+                hit += player.getPosition();
 
                 others.erase(std::remove_if(others.begin(), others.end(), [&](const Other& other) {
-                        if (not std::get<1>(other).Contains(hit))
+                        if (not std::get<1>(other).contains(hit))
                                 return false;
                         if (std::get<0>(other) == RED)
                                 score += 5;
@@ -152,7 +154,7 @@ void Shmup::update() {
                         return true;
                 }), others.end());
 
-                return not sb.Contains(hit);
+                return not sb.contains(hit);
 
         }), shots.end());
 
@@ -162,48 +164,48 @@ void Shmup::draw() {
 
         std::ostringstream ss;
         ss << "\tScore\t" << score;
-        win->Draw(sf::Text(ss.str()));
+        win->draw(sf::Text(ss.str(), font));
 
-        win->Draw(base);
+        win->draw(base);
 
-        shotRect.SetOrigin(-30.f, 0);
+        shotRect.setOrigin(-30.f, 0);
 
-        shotRect.SetRotation(player.GetRotation() - 90.f);
-        shotRect.SetOutlineColor(colors[RED]);
-        win->Draw(shotRect);
-        shotRect.SetOutlineColor(colors[BLUE]);
+        shotRect.setRotation(player.getRotation() - 90.f);
+        shotRect.setOutlineColor(colors[RED]);
+        win->draw(shotRect);
+        shotRect.setOutlineColor(colors[BLUE]);
 
-        shotRect.Rotate(90.f);
-        win->Draw(shotRect);
+        shotRect.rotate(90.f);
+        win->draw(shotRect);
 
-        shotRect.Rotate(90.f);
-        win->Draw(shotRect);
+        shotRect.rotate(90.f);
+        win->draw(shotRect);
 
-        shotRect.Rotate(90.f);
-        win->Draw(shotRect);
+        shotRect.rotate(90.f);
+        win->draw(shotRect);
 
-        win->Draw(player);
+        win->draw(player);
 
         for (const auto& other: others) {
                 const sf::FloatRect otherR = std::get<1>(other);
                 sf::RectangleShape otherRect;
-                otherRect.SetPosition(sf::Vector2f(otherR.Left, otherR.Top));
-                otherRect.SetSize(sf::Vector2f(otherR.Width, otherR.Height));
-                otherRect.SetFillColor(colors[std::get<0>(other)]);
-                win->Draw(otherRect);
+                otherRect.setPosition(sf::Vector2f(otherR.left, otherR.top));
+                otherRect.setSize(sf::Vector2f(otherR.width, otherR.height));
+                otherRect.setFillColor(colors[std::get<0>(other)]);
+                win->draw(otherRect);
         }
 
         for (const auto& shot: shots) {
-                shotRect.SetOrigin(-shot.second, 0);
-                shotRect.SetRotation(shot.first);
-                win->Draw(shotRect);
+                shotRect.setOrigin(-shot.second, 0);
+                shotRect.setRotation(shot.first);
+                win->draw(shotRect);
         }
 
 }
 
 void Shmup::event(sf::Event& event) {
 
-        if (event.Type == sf::Event::KeyPressed and event.Key.Code == sf::Keyboard::P)
+        if (event.type == sf::Event::KeyPressed and event.key.code == sf::Keyboard::P)
                 pause = not pause;
 
 }
@@ -215,9 +217,9 @@ void Shmup::addOther() {
         std::get<0>(other) = urand() > .5f ? BLUE : RED;
 
         do {
-                std::get<1>(other) = sf::FloatRect(urand() * win->GetWidth(), urand() * win->GetHeight(),
-                        urand() * base.GetSize().x, urand() * base.GetSize().y);
-        } while (std::get<1>(other).Intersects(sf::FloatRect(base.GetPosition() - base.GetOrigin(), base.GetSize())));
+                std::get<1>(other) = sf::FloatRect(urand() * win->getSize().x, urand() * win->getSize().y,
+                        urand() * base.getSize().x, urand() * base.getSize().y);
+        } while (std::get<1>(other).intersects(sf::FloatRect(base.getPosition() - base.getOrigin(), base.getSize())));
 
         std::get<2>(other) = sf::Vector2f(urand(), urand());
 
@@ -244,23 +246,23 @@ Precision::Precision() {
         eSpeed = sf::Vector2f(1., 1.) * 1.3f;
         lost = 0;
 
-        player.Move(static_cast<int>(urand() * (win->GetWidth() - player.GetSize().x)),
-                static_cast<int>(urand() * (win->GetHeight() - player.GetSize().y)));
-        enemy.Move(static_cast<int>(urand() * (win->GetWidth() - enemy.GetSize().x)),
-                static_cast<int>(urand() * (win->GetHeight() - enemy.GetSize().y)));
+        player.move(static_cast<int>(urand() * (win->getSize().x - player.getSize().x)),
+                static_cast<int>(urand() * (win->getSize().y - player.getSize().y)));
+        enemy.move(static_cast<int>(urand() * (win->getSize().x - enemy.getSize().x)),
+                static_cast<int>(urand() * (win->getSize().y - enemy.getSize().y)));
 
 }
 
 void Precision::update() {
 
-        sf::FloatRect pb(player.GetPosition(), player.GetSize());
-        sf::FloatRect eb(enemy.GetPosition(), enemy.GetSize());
+        sf::FloatRect pb(player.getPosition(), player.getSize());
+        sf::FloatRect eb(enemy.getPosition(), enemy.getSize());
 
-        lost = lost or pb.Intersects(eb);
+        lost = lost or pb.intersects(eb);
 
-        enemy.Move(eSpeed);
-        eb.Left += eSpeed.x;
-        eb.Top += eSpeed.y;
+        enemy.move(eSpeed);
+        eb.left += eSpeed.x;
+        eb.top += eSpeed.y;
 
         int borders = screenBordersHit(eb);
 
@@ -272,26 +274,26 @@ void Precision::update() {
         if (lost)
                 return;
 
-        sf::Vector2i mouse = sf::Mouse::GetPosition(*win);
+        sf::Vector2i mouse = sf::Mouse::getPosition(*win);
 
         sf::Vector2f move(mouse.x, mouse.y);
-        move -= player.GetPosition() + player.GetSize() / 2.f;
+        move -= player.getPosition() + player.getSize() / 2.f;
 
         if (move.x)
                 move.x = move.x > 0 ? 1 : -1;
         if (move.y)
                 move.y = move.y > 0 ? 1 : -1;
 
-        player.Move(move);
-        pb.Left += move.x;
-        pb.Top += move.y;
+        player.move(move);
+        pb.left += move.x;
+        pb.top += move.y;
 
         borders = screenBordersHit(pb);
         move.x = borders & 1 ? -move.x : 0;
         move.y = borders & 2 ? -move.y : 0;
-        player.Move(move);
+        player.move(move);
 
-        score = clock.GetElapsedTime().AsSeconds();
+        score = clock.getElapsedTime().asSeconds();
 
 }
 
@@ -299,15 +301,15 @@ void Precision::draw() {
 
         std::ostringstream ss;
         ss << "\tTime\t" << score;
-        win->Draw(sf::Text(ss.str()));
+        win->draw(sf::Text(ss.str(), font));
 
         if (lost == 1) {
                 lost = 2;
-                player.SetOutlineColor(enemy.GetOutlineColor());
+                player.setOutlineColor(enemy.getOutlineColor());
         }
 
-        win->Draw(player);
-        win->Draw(enemy);
+        win->draw(player);
+        win->draw(enemy);
 
 }
 
@@ -319,35 +321,35 @@ struct Startup: Game {
 void Startup::draw() {
 
         auto rect = getRect(colors[RED], 300);
-        rect.SetPosition(200, 100);
-        win->Draw(rect);
+        rect.setPosition(200, 100);
+        win->draw(rect);
 
         rect = getRect(colors[BLUE], 300);
-        rect.SetPosition(300, 150);
-        win->Draw(rect);
-        rect.Move(15, 15);
-        win->Draw(rect);
-        rect.Move(15, 15);
-        win->Draw(rect);
+        rect.setPosition(300, 150);
+        win->draw(rect);
+        rect.move(15, 15);
+        win->draw(rect);
+        rect.move(15, 15);
+        win->draw(rect);
 
-        sf::Text text(L"↑\tshmup :P");
-        text.SetPosition(220, 50);
-        win->Draw(text);
+        sf::Text text("UP\tshmup :P", font);
+        text.setPosition(220, 50);
+        win->draw(text);
 
-        text.SetString(L"↓\tprecision :o");
-        text.SetPosition(350, 500);
-        win->Draw(text);
+        text.setString("DOWN\tprecision :o");
+        text.setPosition(350, 500);
+        win->draw(text);
 
 }
 
 void Startup::event(sf::Event& event) {
 
-        if (event.Type != sf::Event::KeyPressed)
+        if (event.type != sf::Event::KeyPressed)
                 return;
 
-        if (event.Key.Code == sf::Keyboard::Up)
+        if (event.key.code == sf::Keyboard::Up)
                 game = new Shmup;
-        else if (event.Key.Code == sf::Keyboard::Down)
+        else if (event.key.code == sf::Keyboard::Down)
                 game = new Precision;
         else return;
 
@@ -360,42 +362,39 @@ int main() {
         sf::Clock clock;
 
         win = new sf::RenderWindow(sf::VideoMode(800, 600), "Bichrome by Fififox", sf::Style::Default &~ sf::Style::Resize);
-        win->SetFramerateLimit(60);
+        win->setFramerateLimit(60);
         game = new Startup;
 
-        std::mt19937 twister(clock.GetElapsedTime().AsMilliseconds());
+        font.loadFromFile("Tuffy.ttf");
+
+        std::mt19937 twister(clock.getElapsedTime().asMilliseconds());
         std::uniform_real_distribution<float> distrib(0, 1);
         urand = std::bind(distrib, twister);
 
         sf::Music music;
-        music.OpenFromFile("solace.ogg");
-        music.SetLoop(true);
-        music.Play();
+        music.openFromFile("solace.ogg");
+        music.setLoop(true);
+        music.play();
 
         float time;
-        while (win->IsOpen()) {
+        while (win->isOpen()) {
 
-                clock.Restart();
+                clock.restart();
 
-                win->Display();
-                win->Clear(sf::Color(48, 48, 48));
+                win->display();
+                win->clear(sf::Color(48, 48, 48));
                 game->draw();
 
                 sf::Event event;
-                while (win->PollEvent(event)) {
-                        if ((event.Type == sf::Event::KeyPressed and event.Key.Code == sf::Keyboard::Escape)
-                                or event.Type == sf::Event::Closed)
-                                if (dynamic_cast<Startup*>(game))
-                                        return 0;
-                                else {
-                                        delete game;
-                                        game = new Startup;
-                                }
+                while (win->pollEvent(event)) {
+                        if ((event.type == sf::Event::KeyPressed and event.key.code == sf::Keyboard::Escape)
+                                or event.type == sf::Event::Closed)
+                                return 0;
                         else
                                 game->event(event);
                 }
 
-                time += clock.GetElapsedTime().AsSeconds();
+                time += clock.getElapsedTime().asSeconds();
                 while (time > 0.f) {
                         time -= .005f;
                         game->update();
